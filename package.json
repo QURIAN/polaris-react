@@ -122,6 +122,7 @@
     "crypto": "^1.0.1",
     "css-loader": "^0.28.3",
     "cssnano": "^3.10.0",
+    "dependency-cruiser": "^4.6.0",
     "enzyme": "^3.7.0",
     "enzyme-adapter-react-16": "^1.6.0",
     "express": "^4.16.3",

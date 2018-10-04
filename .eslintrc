@@ -34,6 +34,7 @@
     "react/no-array-index-key": "off",
     "shopify/jest/no-vague-titles": "off",
     "shopify/jsx-no-complex-expressions": "off",
+    "shopify/no-ancestor-directory-import": "on",
     "jsx-a11y/label-has-for": [
       2,
       {
