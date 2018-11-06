@@ -1,5 +1,7 @@
 import * as React from 'react';
 import {classNames, variationName} from '@shopify/react-utilities/styles';
+import {autobind} from '@shopify/javascript-utilities/decorators';
+import {noop} from '@shopify/javascript-utilities/other';
 
 import {withAppProvider, WithAppProviderProps} from '../AppProvider';
 import Image from '../Image';
@@ -32,85 +34,116 @@ export interface Props {
   source?: string;
   /** Accessible label for the avatar image */
   accessibilityLabel?: string;
+  /** callback when the source provided doesn't return an image */
+  onError?(): void;
+}
+
+export interface State {
+  hasError: boolean;
 }
 
 export type CombinedProps = Props & WithAppProviderProps;
 
-function Avatar({
-  name,
-  source,
-  initials,
-  customer,
-  size = 'medium',
-  accessibilityLabel,
-  polaris: {intl},
-}: CombinedProps) {
-  const nameString = name || initials;
+export class Avatar extends React.PureComponent<CombinedProps, State> {
+  state: State = {
+    hasError: false,
+  };
 
-  let finalSource: string | undefined;
-  let label: string | undefined;
-
-  if (accessibilityLabel) {
-    label = accessibilityLabel;
-  } else if (name) {
-    label = name;
-  } else if (initials) {
-    const splitInitials = initials.split('').join(' ');
-    label = intl.translate('Polaris.Avatar.labelWithInitials', {
-      initials: splitInitials,
-    });
-  } else {
-    label = intl.translate('Polaris.Avatar.label');
+  ComponentDidUpdate({source: previousSource}: Props) {
+    const {source} = this.props;
+    if (previousSource !== source) {
+      this.setState({hasError: false});
+    }
   }
 
-  if (source) {
-    finalSource = source;
-  } else if (customer) {
-    finalSource = customerPlaceholder(nameString);
+  render() {
+    const {
+      name,
+      source,
+      initials,
+      customer,
+      size = 'medium',
+      accessibilityLabel,
+      polaris: {intl},
+    } = this.props;
+
+    const {hasError = false} = this.state;
+
+    const nameString = name || initials;
+
+    let finalSource: string | undefined;
+    let label: string | undefined;
+
+    if (accessibilityLabel) {
+      label = accessibilityLabel;
+    } else if (name) {
+      label = name;
+    } else if (initials) {
+      const splitInitials = initials.split('').join(' ');
+      label = intl.translate('Polaris.Avatar.labelWithInitials', {
+        initials: splitInitials,
+      });
+    } else {
+      label = intl.translate('Polaris.Avatar.label');
+    }
+
+    if (source) {
+      finalSource = source;
+    } else if (customer) {
+      finalSource = customerPlaceholder(nameString);
+    }
+
+    const className = classNames(
+      styles.Avatar,
+      styles[variationName('style', styleClass(nameString))],
+      size && styles[variationName('size', size)],
+      finalSource && !hasError && styles.hasImage,
+    );
+
+    const imageMarkUp = finalSource ? (
+      <Image
+        className={styles.Image}
+        source={finalSource}
+        alt=""
+        role="presentation"
+        onError={this.handleError}
+      />
+    ) : null;
+
+    // Use `dominant-baseline: central` instead of `dy` when Edge supports it.
+    const verticalOffset = '0.35em';
+
+    const initialsMarkup = initials ? (
+      <span className={styles.Initials}>
+        <svg className={styles.Svg} viewBox="0 0 48 48">
+          <text
+            x="50%"
+            y="50%"
+            dy={verticalOffset}
+            fill="currentColor"
+            fontSize="26"
+            textAnchor="middle"
+          >
+            {initials}
+          </text>
+        </svg>
+      </span>
+    ) : null;
+
+    return (
+      <span aria-label={label} role="img" className={className}>
+        {initialsMarkup}
+        {imageMarkUp}
+      </span>
+    );
   }
 
-  const className = classNames(
-    styles.Avatar,
-    styles[variationName('style', styleClass(nameString))],
-    size && styles[variationName('size', size)],
-    finalSource && styles.hasImage,
-  );
-
-  const imageMarkUp = finalSource ? (
-    <Image
-      className={styles.Image}
-      source={finalSource}
-      alt=""
-      role="presentation"
-    />
-  ) : null;
-
-  // Use `dominant-baseline: central` instead of `dy` when Edge supports it.
-  const verticalOffset = '0.35em';
-
-  const initialsMarkup = initials ? (
-    <span className={styles.Initials}>
-      <svg className={styles.Svg} viewBox="0 0 48 48">
-        <text
-          x="50%"
-          y="50%"
-          dy={verticalOffset}
-          fill="currentColor"
-          fontSize="26"
-          textAnchor="middle"
-        >
-          {initials}
-        </text>
-      </svg>
-    </span>
-  ) : null;
-
-  return (
-    <span aria-label={label} role="img" className={className}>
-      {initialsMarkup}
-      {imageMarkUp}
-    </span>
-  );
+  @autobind
+  handleError() {
+    const {onError = noop} = this.props;
+    onError();
+    this.setState({hasError: true});
+  }
 }
 
 function styleClass(name?: string) {
